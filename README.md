@@ -1,18 +1,18 @@
-# Bupen — System Memory untuk AI Berjiwa
+# hikmah — System Memory untuk AI Berjiwa
 
 > "Coba → Waktu → Memory → Evaluasi → Tidak ulang"
 >
 > Bukan sempurna — punya jiwa.
 
-Bupen adalah **system memory framework** untuk AI coding agent. Bukan untuk membuat AI lebih cepat atau lebih akurat — tapi untuk membuat AI **belajar dari proses**, termasuk dari kesalahan.
+hikmah adalah **system memory framework** untuk AI coding agent. Bukan untuk membuat AI lebih cepat atau lebih akurat — tapi untuk membuat AI **belajar dari proses**, termasuk dari kesalahan.
 
 ## Filosofi
 
 Di GitHub sudah ada puluhan proyek AI memory. Semuanya kejar satu hal: **akurasi retrieval**. Vector search, knowledge graph, MCP server, benchmark LongMemEval 96% — semua tentang "seberapa tepat AI mengingat."
 
-Bupen berbeda. Bupen tidak peduli seberapa cepat AI menemukan jawaban. Bupen peduli **bagaimana AI sampai ke jawaban itu.**
+hikmah berbeda. hikmah tidak peduli seberapa cepat AI menemukan jawaban. hikmah peduli **bagaimana AI sampai ke jawaban itu.**
 
-| Mereka | Bupen |
+| Mereka | hikmah |
 |--------|-------|
 | Kejar akurasi | Kejar proses |
 | Shortcut ke makna (vector) | Belajar lewat trial-and-error (FTS5) |
@@ -32,8 +32,8 @@ Bupen berbeda. Bupen tidak peduli seberapa cepat AI menemukan jawaban. Bupen ped
 ## Cara Mulai
 
 ```bash
-git clone https://github.com/[USER]/bupen.git
-cd bupen
+git clone https://github.com/aa-dede/hikmah.git
+cd hikmah
 python memory_tool.py init    # isi nama AI, owner, workspace
 python memory_tool.py         # mulai
 ```
@@ -80,7 +80,7 @@ Sanksi skip:
 ## Struktur File
 
 ```
-bupen/
+hikmah/
 ├── memory_tool.py           ← Script utama
 ├── README.md                ← Panduan ini
 ├── LICENSE                  ← MIT
