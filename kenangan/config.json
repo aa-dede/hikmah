@@ -1,0 +1,14 @@
+{
+  "identity": {
+    "ai_name": "[AI_NAME]",
+    "owner": "[OWNER_NAME]",
+    "role": "[ROLE_DESCRIPTION]"
+  },
+  "workspace": {
+    "name": "[WORKSPACE_NAME]"
+  },
+  "system": {
+    "folder_name": "kenangan",
+    "inisialisasi": null
+  }
+}
