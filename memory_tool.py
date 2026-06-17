@@ -3,8 +3,13 @@
 # Identity: [AI_NAME] ([WORKSPACE])
 # Folder system: kenangan/ (default, bisa diubah di config.json)
 
-import json, sys, os, argparse, time
+import json, sys, os, argparse, time, random
 from datetime import date, datetime
+from collections import Counter, defaultdict
+import io
+
+if hasattr(sys.stdout, 'buffer'):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
 SYSTEM_DIR = "kenangan"
 CONFIG_FILE = "config.json"
@@ -490,32 +495,206 @@ def cmd_search(args):
     expected = ['idle', 'input', 'search_before_hypothesis', 'hypothesis', 'search_before_response', 'evaluation']
     flow_check(expected, 'search')
     entries = load_memories()
-    q = args.query.lower()
-    results = []
-    for e in entries:
-        score = 0
-        if q in e.get('content', '').lower():
-            score += 3
-        for tag in e.get('tags', []):
-            if q in tag.lower():
-                score += 2
-        if q in e.get('type', '').lower():
-            score += 1
-        if score > 0:
-            results.append((score, e))
-    results.sort(key=lambda x: (-x[0], -x[1].get('id', 0)))
-    for score, e in results[:args.limit]:
+    if not entries:
+        print('  Belum ada memory.')
+        return
+
+    # ── Mode agregasi (tanpa perlu query) ──
+    if args.brief:
+        _cmd_brief(entries, name)
+        return
+    if args.count:
+        print(f'  [{name}] Total: {len(entries)} memory')
+        return
+
+    # ── Pipeline filter ──
+    results = _filter_entries(entries, args)
+
+    # ── Query scoring (jika query diberikan) ──
+    q = args.query.lower().strip() if args.query else ''
+    if q:
+        scored = []
+        if args.regex:
+            import re
+            try:
+                pat = re.compile(args.query, re.IGNORECASE)
+                for e in results:
+                    score = 0
+                    if pat.search(e.get('content', '')):
+                        score += 3
+                    for tag in e.get('tags', []):
+                        if pat.search(tag):
+                            score += 2
+                    if pat.search(e.get('type', '')):
+                        score += 1
+                    if score > 0:
+                        scored.append((score, e))
+            except re.error:
+                print(f'  Regex error: pola tidak valid')
+                return
+        else:
+            for e in results:
+                score = 0
+                if q in e.get('content', '').lower():
+                    score += 3
+                for tag in e.get('tags', []):
+                    if q in tag.lower():
+                        score += 2
+                if q in e.get('type', '').lower():
+                    score += 1
+                if score > 0:
+                    scored.append((score, e))
+        scored.sort(key=lambda x: (-x[0], -x[1].get('id', 0)))
+        results = [e for _, e in scored]
+
+    # ── Posisi ──
+    if args.last:
+        results = results[-args.last:]
+    if args.first:
+        results = results[:args.first]
+    if args.range:
+        parts = args.range.split('-')
+        if len(parts) == 2:
+            try:
+                start = max(0, int(parts[0]) - 1)
+                end = int(parts[1])
+                results = results[start:end]
+            except ValueError:
+                pass
+
+    # ── Sort ──
+    if args.sort:
+        rev = not args.asc
+        results.sort(key=lambda x: str(x.get(args.sort, '')), reverse=rev)
+
+    # ── Random ──
+    if args.random and results:
+        results = [random.choice(results)]
+    if args.sample:
+        results = random.sample(results, min(args.sample, len(results)))
+
+    # ── Group ──
+    if args.group:
+        _cmd_grouped(results, args.group, args.limit)
+        return
+
+    # ── Display ──
+    display = results[:args.limit]
+    for e in display:
         c = e.get('content', '')
-        if len(c) > 120:
+        if not args.deep and len(c) > 120:
             c = c[:120] + '...'
-        tags = ','.join(e.get('tags', []))
-        print(f'  [{e.get("type", "?")}] (score={score}) {c}')
-        if tags:
-            print(f'    tags: {tags}')
-    if not results:
+        tags_str = ','.join(e.get('tags', []))
+        eid = e.get('id', '?')
+        print(f'  [{e.get("type", "?")}] (id={eid}) {c}')
+        if tags_str:
+            print(f'    tags: {tags_str}')
+        if args.deep:
+            print(f'    date: {e.get("date", e.get("ts", "?"))}')
+
+    total_display = len(display)
+    total_filtered = len(results)
+    if not display:
         print('  Tidak ada hasil.')
     else:
-        print(f'\nDitemukan: {len(results)} dari {len(entries)} memory')
+        print(f'\nDitemukan: {total_display} dari {total_filtered} memory (total {len(entries)})')
+
+
+def _filter_entries(entries, args):
+    """Terapkan semua filter non-query ke entries."""
+    results = []
+    for e in entries:
+        ok = True
+        # ── ID ──
+        eid = e.get('id')
+        if args.id is not None and eid != args.id:
+            ok = False
+        if args.gt_id is not None and (eid is None or eid <= args.gt_id):
+            ok = False
+        if args.lt_id is not None and (eid is None or eid >= args.lt_id):
+            ok = False
+        # ── Date ──
+        e_date = e.get('date', '')
+        if args.since and e_date < args.since:
+            ok = False
+        if args.until and e_date > args.until:
+            ok = False
+        # ── Type ──
+        e_type = e.get('type', '')
+        if args.type and e_type != args.type:
+            ok = False
+        if args.ne_type and e_type == args.ne_type:
+            ok = False
+        # ── Tags existence ──
+        e_tags = e.get('tags', [])
+        if args.has_tag and not e_tags:
+            ok = False
+        if args.orphan and e_tags:
+            ok = False
+        # ── Tags count ──
+        if args.size is not None and len(e_tags) != args.size:
+            ok = False
+        # ── Exclude tags ──
+        if args.not_tags:
+            not_list = [t.strip().lower() for t in args.not_tags.split(',')]
+            e_tag_lower = [t.lower() for t in e_tags]
+            for nt in not_list:
+                if nt and nt in e_tag_lower:
+                    ok = False
+        # ── Tags filter (AND/OR) ──
+        if args.tags:
+            tag_filter = [t.strip().lower() for t in args.tags.split(',')]
+            e_tag_lower = [t.lower() for t in e_tags]
+            if args.any:
+                if not any(tf in e_tag_lower for tf in tag_filter if tf):
+                    ok = False
+            else:
+                if not all(tf in e_tag_lower for tf in tag_filter if tf):
+                    ok = False
+        if ok:
+            results.append(e)
+    return results
+
+
+def _cmd_brief(entries, name):
+    """Tampilkan distribusi singkat."""
+    types = Counter(e.get('type', '?') for e in entries)
+    tags = Counter()
+    for e in entries:
+        for t in e.get('tags', []):
+            tags[t] += 1
+    dated = [e for e in entries if e.get('date')]
+    since = min(e.get('date', '') for e in dated) if dated else '?'
+    until = max(e.get('date', '') for e in dated) if dated else '?'
+    print(f'  [{name}] Distribusi Memory')
+    print(f'  Total: {len(entries)} entri')
+    print(f'  Rentang: {since} s/d {until}')
+    print(f'  -- Berdasarkan Type --')
+    for t, n in types.most_common():
+        print(f'    {t}: {n}')
+    if tags:
+        print(f'  -- 10 Tag Teratas --')
+        for t, n in tags.most_common(10):
+            print(f'    {t}: {n}')
+
+
+def _cmd_grouped(results, group_by, limit):
+    """Tampilkan hasil dikelompokkan."""
+    groups = defaultdict(list)
+    for e in results:
+        if group_by == 'tags':
+            tg = e.get('tags', [])
+            key = ','.join(tg) if tg else '(no tag)'
+        else:
+            key = str(e.get(group_by, '?'))
+        groups[key].append(e)
+    for g, items in sorted(groups.items()):
+        print(f'  [{g}] ({len(items)})')
+        for e in items[:limit]:
+            c = e.get('content', '')
+            if len(c) > 80:
+                c = c[:80] + '...'
+            print(f'    [{e.get("type", "?")}] {c}')
 
 def cmd_list(args):
     name = identity_name()
@@ -695,9 +874,34 @@ if __name__ == '__main__':
     pa.add_argument('--type', default='project')
     pl = sub.add_parser('log', help='Catat log narasi')
     pl.add_argument('narrative')
-    ps = sub.add_parser('search', help='Cari memory')
-    ps.add_argument('query')
+    ps = sub.add_parser('search', help='Cari memory dengan 10 filter kategori')
+    ps.add_argument('query', nargs='?', default='', help='Kata kunci (opsional jika pakai filter)')
     ps.add_argument('--limit', type=int, default=5)
+    ps.add_argument('--since', help='Filter date >= YYYY-MM-DD')
+    ps.add_argument('--until', help='Filter date <= YYYY-MM-DD')
+    ps.add_argument('--id', type=int, help='Filter ID tepat')
+    ps.add_argument('--gt-id', type=int, help='ID > N')
+    ps.add_argument('--lt-id', type=int, help='ID < N')
+    ps.add_argument('--type', help='Filter tipe')
+    ps.add_argument('--ne-type', help='Kecualikan tipe')
+    ps.add_argument('--tags', help='Filter tag (koma=AND)')
+    ps.add_argument('--any', action='store_true', help='OR logic untuk --tags')
+    ps.add_argument('--not', dest='not_tags', help='Kecualikan tag')
+    ps.add_argument('--has-tag', action='store_true', help='Punya tag minimal 1')
+    ps.add_argument('--orphan', action='store_true', help='Tanpa tag')
+    ps.add_argument('--size', type=int, help='Jumlah tag tepat N')
+    ps.add_argument('--regex', action='store_true', help='Mode regex untuk query')
+    ps.add_argument('--deep', action='store_true', help='Tampilkan konten penuh')
+    ps.add_argument('--last', type=int, help='N entry terbaru')
+    ps.add_argument('--first', type=int, help='N entry pertama')
+    ps.add_argument('--range', help='Range ID (contoh: 20-50)')
+    ps.add_argument('--sort', choices=['id', 'date', 'type', 'ts'], help='Urutkan berdasarkan')
+    ps.add_argument('--asc', action='store_true', help='Urut ascending')
+    ps.add_argument('--group', help='Kelompokkan (id/date/type/tags)')
+    ps.add_argument('--count', action='store_true', help='Tampilkan jumlah saja')
+    ps.add_argument('--brief', action='store_true', help='Distribusi memory')
+    ps.add_argument('--random', action='store_true', help='Ambil acak 1 entry')
+    ps.add_argument('--sample', type=int, help='Ambil acak N entry')
     pls = sub.add_parser('list', help='List memory')
     pls.add_argument('--limit', type=int, default=10)
     pu = sub.add_parser('user', help='Catat input user')
@@ -711,7 +915,7 @@ if __name__ == '__main__':
         ensure_root(create=True)
     else:
         if ensure_root() is None:
-            print("  Belum ada system memory. Jalankan 'python memory_tool.py init' dulu.")
+            print("  Belum ada system memory. Jalankan 'bupen init' atau 'python memory_tool.py init' dulu.")
             sys.exit(1)
         if not os.path.exists(sys_path(IDENTITY_FILE)):
             generate_identity_file()

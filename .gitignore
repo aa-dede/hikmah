@@ -10,3 +10,8 @@ Thumbs.db
 .auto_backup/
 logs/
 .obsidian/
+kenangan/memory.json
+kenangan/flow_state.json
+*.zip
+*.7z
+*.rar
