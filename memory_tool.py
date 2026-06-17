@@ -86,6 +86,10 @@ def flow_check(expected_steps, cmd_name, cmd_type=None):
             print(f'  [!] [{cmd_name}] Flow: Loncat dari {step_names.get(current, current)}.')
         if skip_count >= 2:
             print(f'       Skip ke-{skip_count} dalam sesi ini.')
+    if warned:
+        final = flow_read()
+        final['skip_count'] = final.get('skip_count', 0) + 1
+        write_json(sys_path(FLOW_FILE), final)
     return not warned
 
 def flow_show():
