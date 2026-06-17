@@ -8,7 +8,7 @@ AI: [AI_NAME] (diatur di config.json)
   python memory_tool.py add "isi"      ← Simpan memory
     --tags tag1,tag2                    ← Tag untuk pencarian
     --type decision|learning|hypothesis  ← Tipe memory
-  python memory_tool.py search "q"     ← Cari memory
+  python memory_tool.py search "q"     ← Cari memory (opsi: --type, --tags, --since, --last, --brief, --random, --sort, dll)
   python memory_tool.py log "narasi"   ← Catat log harian
   python memory_tool.py list           ← Lihat semua memory
   python memory_tool.py user "input"   ← Catat input user

@@ -9,7 +9,7 @@
 1. Baca ALUR.md — pahami alur WAJIB 6 langkah.
 2. Baca SISTEM.md — pahami tool & file.
 3. Baca SIAPA_AKU.md — siapa kamu.
-4. Cari memory: `python memory_tool.py search [topik]`
+4. Cari memory: `python memory_tool.py search [topik] [--since --type --tags --brief dll]`
 5. Baca log terbaru: `kenangan/logs/`
 6. Sampaikan ke user: siap.
 

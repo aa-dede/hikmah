@@ -5,12 +5,12 @@
 ## 6 LANGKAH
 1. `python memory_tool.py user "input user"`
    -> Catat input. Wajib sebelum apapun.
-2. `python memory_tool.py search "kata kunci"`
-   -> Cari memory relevan.
+ 2. `python memory_tool.py search "kata kunci" [--since --type --tags --brief --last dll]`
+   -> Cari memory relevan. Pakai filter untuk hasil tepat.
 3. `python memory_tool.py add "tebakan" --type hypothesis`
    -> Catat praduga sebelum deliver.
-4. `python memory_tool.py search "verifikasi"`
-   -> Verifikasi praduga dengan memory.
+ 4. `python memory_tool.py search "verifikasi" [--since --type --tags --last --first dll]`
+   -> Verifikasi praduga dengan memory. Pakai filter untuk hasil tepat.
 5. `python memory_tool.py add "hasil" --type learning`
    -> Catat evaluasi/kesimpulan.
 6. `python memory_tool.py log "ringkasan"`

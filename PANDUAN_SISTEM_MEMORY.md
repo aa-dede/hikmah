@@ -51,7 +51,7 @@ Lapisan TERLUAR yang langsung dibaca AI saat startup. File ini memberi tahu AI:
 1. Baca ALUR.md — pahami alur WAJIB 6 langkah.
 2. Baca SISTEM.md — pahami tool & file.
 3. Baca SIAPA_AKU.md — siapa kamu.
-4. Cari memory: `python memory_tool.py search [topik]`
+4. Cari memory: `python memory_tool.py search [topik] [--since --type --tags --brief dll]`
 5. Baca log terbaru: `kenangan/logs/`
 6. Sampaikan ke user: siap.
 
@@ -71,12 +71,12 @@ Lapisan TERLUAR yang langsung dibaca AI saat startup. File ini memberi tahu AI:
 ## 6 LANGKAH
 1. `python memory_tool.py user "input user"`
    -> Catat input. Wajib sebelum apapun.
-2. `python memory_tool.py search "kata kunci"`
-   -> Cari memory relevan.
+ 2. `python memory_tool.py search "kata kunci" [--since --type --tags --brief --last dll]`
+   -> Cari memory relevan. Pakai filter untuk hasil tepat.
 3. `python memory_tool.py add "tebakan" --type hypothesis`
    -> Catat praduga sebelum deliver.
-4. `python memory_tool.py search "verifikasi"`
-   -> Verifikasi praduga dengan memory.
+ 4. `python memory_tool.py search "verifikasi" [--since --type --tags --last --first dll]`
+   -> Verifikasi praduga dengan memory. Pakai filter untuk hasil tepat.
 5. `python memory_tool.py add "hasil" --type learning`
    -> Catat evaluasi/kesimpulan.
 6. `python memory_tool.py log "ringkasan"`
@@ -111,7 +111,7 @@ AI: [nama AI dari config]
   python memory_tool.py add "isi"         ← Simpan memory
     --tags tag1,tag2                       ← Tag untuk pencarian
     --type decision|learning|hypothesis    ← Tipe memory
-  python memory_tool.py search "q"        ← Cari memory
+  python memory_tool.py search "q"        ← Cari memory (10 filter: --since, --type, --tags, --regex, --last, --sort, --brief, --random, dll)
   python memory_tool.py log "narasi"      ← Catat log harian
   python memory_tool.py list              ← Lihat semua memory
   python memory_tool.py user "input"      ← Catat input user
@@ -264,11 +264,24 @@ Simpan ke `memory.json`. Parameter `--type`:
 
 Parameter `--tags`: kata kunci pisah koma, untuk pencarian.
 
-### Mencari Memory
+### Mencari Memory — 10 Kategori Filter
 ```
 memory_tool.py search "query" --limit 5
 ```
-Cari di `memory.json`. Cocokkan kata kunci, tag, tipe, dan tanggal.
+Cari di `memory.json` dengan pipeline filter:
+
+| Kategori | Filter | Contoh |
+|----------|--------|--------|
+| PERBANDINGAN | `--since`, `--until`, `--id`, `--gt-id`, `--lt-id`, `--type`, `--ne-type` | `--since 2026-06-01 --type learning` |
+| LOGIKA | `--tags` (AND), `--any` (OR), `--not` | `--tags RAHAYU,test --any` |
+| ELEMEN | `--has-tag`, `--orphan`, `--size N` | `--orphan` (tanpa tag) |
+| EVALUASI | `query` + `--regex`, `--deep` | `--regex "Bupen.*filter" --deep` |
+| ARRAY | `--tags` (AND), `--any` (OR), `--size` | `--size 2` (tepat 2 tag) |
+| POSISI | `--last N`, `--first N`, `--range A-B` | `--range 20-50` |
+| TRANSFORM | `--sort id/date/type/ts`, `--asc`, `--group` | `--group type` |
+| AGREGASI | `--count`, `--brief` | `--brief` (distribusi) |
+| RANDOM | `--random`, `--sample N` | `--sample 3` |
+| SPESIAL | Error handling + encoding fix | Otomatis |
 
 ### Melihat Daftar
 ```
@@ -394,7 +407,7 @@ Isinya GENERIC — tanpa nama AI/user. Identitas spesifik di Layer 1.
 | `detect_root()` | Cari folder system dari CWD ke parent | 4 |
 | `cmd_init()` | Inisialisasi + config interaktif | 1 |
 | `cmd_add()` | Simpan ke memory.json + log | 3 |
-| `cmd_search()` | Cari di memory.json (keyword/tag/date) | 3 |
+| `cmd_search()` | Cari di memory.json (10 filter: perbandingan, logika, posisi, dll) | 3 |
 | `cmd_list()` | Tampilkan memory terbaru | 3 |
 | `cmd_log()` | Catat narasi ke logs/ | 3 |
 | `cmd_transcript()` | Simpan percakapan ke conversation.md | 3 |
